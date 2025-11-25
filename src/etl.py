@@ -261,11 +261,13 @@ def process_excel_files(con):
                         # WIDE FORMAT (Indicators or Years as columns)
                         # Assume columns that are not geo/time are indicators
                         print(f"  Sheet {sheet}: Detected Wide format")
+                        print("hier")
                         id_vars = [geo_col_orig, time_col_orig]
+                        print(id_vars)
                         value_vars = [c for c in df.columns if c not in id_vars]
-                        
+                        print(value_vars)
                         melted = df.melt(id_vars=id_vars, value_vars=value_vars, var_name='indicator', value_name='value')
-                        
+                        print(melted)
                         for _, row in melted.iterrows():
                             try:
                                 y = int(str(row[time_col_orig])[:4])
