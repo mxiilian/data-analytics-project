@@ -1,5 +1,33 @@
 # Data Documentation (`data.md`)
 
+| Problem | Details |
+|-------|---------|
+| ⚠️ **Copenhagen fehlt** | Not in ANY Eurostat city datasets — only available in WHO air quality |
+| ⚠️ **Amsterdam sparse** | Only 5-7 years for most indicators (data starts ~2019) |
+| ⚠️ **Stockholm sparse** | Only 2-3 years for transport, tourism, labour data |
+| ⚠️ **Lisbon sparse** | Only 1 year for labour market data |
+| ✅ **Hamburg, Barcelona, Paris, Budapest, Milan** | Best coverage (7-9 years) |
+
+
+
+```
+output/processed/
+├── data_coverage_report.csv     # Full coverage matrix
+├── urb_ctran_processed.csv      # Cars per 1000 pop
+├── urb_cpop1_processed.csv      # Population
+├── urb_ctour_processed.csv      # Tourist nights
+├── urb_ceduc_processed.csv      # Higher ed students
+├── urb_clma_unemployed_processed.csv
+├── urb_clma_employed_processed.csv
+├── urb_cpopcb_processed.csv     # Foreign population
+├── hlth_rs_bds1_processed.csv   # Hospital beds (country-level)
+├── sdg_11_60_processed.csv      # Recycling rate (country-level)
+├── sdg_17_60_processed.csv      # Internet VHCN (country-level)
+├── trng_lfse_01_processed.csv   # Education participation
+└── who_air_quality_processed.csv # PM10, PM2.5, NO2
+```
+
+
 ## 1. Datasets Overview
 
 ### A. Eurostat Urban Audit & Related Datasets (CSV)
