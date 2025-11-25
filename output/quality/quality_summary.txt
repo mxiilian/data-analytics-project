@@ -1,0 +1,55 @@
+======================================================================
+DATA QUALITY ASSESSMENT SUMMARY
+======================================================================
+
+OVERALL STATISTICS
+  Total data points:     790
+  Total missing values:  0 (0.0%)
+  Total outliers:        186 (23.5%)
+
+PER-INDICATOR SUMMARY
+----------------------------------------------------------------------
+Indicator                      Rows  Miss%   Out%    Z  IQR  YoY
+----------------------------------------------------------------------
+unemployed_total                 50   0.0%  46.0%    0    8    8
+population_total                 68   0.0%  38.2%    0    8    1
+tourist_nights                   34   0.0%  38.2%    0    7    8
+cars_per_1000                    49   0.0%  32.7%    0   13    1
+pm25_concentration               53   0.0%  30.2%    0    0    0
+education_participation_pct      81   0.0%  29.6%    1    1   14
+higher_ed_students               50   0.0%  24.0%    0    8    4
+hospital_beds_per_100k           80   0.0%  23.8%    0    0    1
+internet_vhcn_pct                45   0.0%  22.2%    0    0    7
+employed_20_64                   42   0.0%  19.0%    0    8    0
+foreign_population               51   0.0%  15.7%    0    8    0
+recycling_rate_pct               81   0.0%   6.2%    0    0    5
+pm10_concentration               53   0.0%   5.7%    0    0    0
+no2_concentration                53   0.0%   5.7%    0    0    0
+----------------------------------------------------------------------
+
+LOCATIONS WITH MOST OUTLIERS
+  Paris: 6 outliers across indicators
+  Milan: 4 outliers across indicators
+  HU: 4 outliers across indicators
+  Hamburg: 3 outliers across indicators
+  Budapest: 3 outliers across indicators
+  Amsterdam: 2 outliers across indicators
+  Stockholm: 2 outliers across indicators
+  Barcelona: 2 outliers across indicators
+  DE: 2 outliers across indicators
+  NL: 2 outliers across indicators
+
+⚠️  HIGH OUTLIER RATE (>15%):
+    - cars_per_1000: 32.7% outliers
+    - population_total: 38.2% outliers
+    - tourist_nights: 38.2% outliers
+    - higher_ed_students: 24.0% outliers
+    - unemployed_total: 46.0% outliers
+    - employed_20_64: 19.0% outliers
+    - foreign_population: 15.7% outliers
+    - hospital_beds_per_100k: 23.8% outliers
+    - internet_vhcn_pct: 22.2% outliers
+    - education_participation_pct: 29.6% outliers
+    - pm25_concentration: 30.2% outliers
+
+======================================================================

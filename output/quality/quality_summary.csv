@@ -1,0 +1,15 @@
+indicator,total_rows,missing_count,missing_pct,outlier_count,outlier_pct,outlier_zscore,outlier_iqr,outlier_temporal,outlier_range,mean,std,min,max,locations_with_outliers
+cars_per_1000,49,0,0.0,16,32.7,0,13,1,0,386.08,94.59,255.07,586.61,Milan;Amsterdam;Stockholm
+population_total,68,0,0.0,26,38.2,0,8,1,0,3212280.31,2755389.21,960402.0,10353710.0,Barcelona;Paris;Milan
+tourist_nights,34,0,0.0,13,38.2,0,7,8,0,22454186.44,23238675.79,2418305.0,76249739.0,Hamburg;Paris;Budapest;Milan;Lisbon
+higher_ed_students,50,0,0.0,12,24.0,0,8,4,0,243248.96,213361.04,61314.0,772728.0,Hamburg;Paris;Budapest
+unemployed_total,50,0,0.0,23,46.0,0,8,8,0,176203.54,221595.8,29.0,677693.0,Hamburg;Barcelona;Paris;Budapest;Milan;Amsterdam;Stockholm
+employed_20_64,42,0,0.0,8,19.0,0,8,0,0,1754974.4,1393853.63,472000.0,4596507.0,Paris
+foreign_population,51,0,0.0,8,15.7,0,8,0,0,768527.98,805694.81,157355.0,2694007.0,Paris
+hospital_beds_per_100k,80,0,0.0,19,23.8,0,0,1,0,419.74,200.68,187.41,800.25,DE;HU;NL
+recycling_rate_pct,81,0,0.0,5,6.2,0,0,5,0,45.32,11.53,26.8,71.4,DK;ES;HU;PT;SE
+internet_vhcn_pct,45,0,0.0,10,22.2,0,0,7,0,76.34,20.02,30.0,98.3,DE;FR;HU;IT
+education_participation_pct,81,0,0.0,24,29.6,1,1,14,0,14.11,8.33,4.2,35.6,DK;ES;FR;HU;IT;NL;PT;SE
+pm10_concentration,53,0,0.0,3,5.7,0,0,0,0,23.33,5.55,14.24,37.98,
+pm25_concentration,53,0,0.0,16,30.2,0,0,0,0,13.7,5.62,4.76,28.14,
+no2_concentration,53,0,0.0,3,5.7,0,0,0,0,30.02,8.15,15.36,51.78,
