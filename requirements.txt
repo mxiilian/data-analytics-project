@@ -7,3 +7,7 @@ python-dateutil==2.9.0.post0
 pytz==2025.2
 six==1.17.0
 tzdata==2025.2
+optuna==4.6.0
+optuna-dashboard==0.20.0
+scikit-learn==1.7.2
+scipy==1.16.3
