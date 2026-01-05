@@ -1,22 +1,29 @@
 from __future__ import annotations
 
+import sys
 import logging
 from pathlib import Path
+
+# Allow running as a script: `python src/clustering/main.py`
+# (when executed directly, relative imports have no package context).
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
 import pandas as pd
 from sklearn.decomposition import PCA
 
-from . import db as dbmod
-from .evaluate import ClusterMetrics
-from .extract import (
+from src.clustering import db as dbmod
+from src.clustering.evaluate import ClusterMetrics
+from src.clustering.extract import (
     fetch_city_entities,
     fetch_long_city_measurements,
     fetch_long_country_measurements_for_cities,
 )
-from .features import build_quality_features, build_trajectory_features, build_typology_features
-from .models import prepare_feature_matrix, fit_gmm, fit_kmeans
-from .tuning import make_sqlite_storage_uri, tune_clustering
-from .writeback import (
+from src.clustering.features import build_quality_features, build_trajectory_features, build_typology_features
+from src.clustering.models import prepare_feature_matrix, fit_gmm, fit_kmeans
+from src.clustering.tuning import make_sqlite_storage_uri, tune_clustering
+from src.clustering.writeback import (
     ensure_schema,
     write_embeddings_df,
     write_feature_profiles_df,
@@ -47,6 +54,10 @@ CONFIG = {
     "max_cluster_frac": 0.85,
     "seed": 42,
     "scaler": "robust",  # robust|standard
+    "add_missingness_flags": True,
+    "drop_missing_rate_gt": 0.98,
+    "drop_zero_variance": True,
+    "export_feature_matrices": True,
     "run_quality": True,
     "run_typology": True,
     "run_trajectory": True,
@@ -115,6 +126,10 @@ def main() -> None:
     optuna_sqlite.parent.mkdir(parents=True, exist_ok=True)
     storage_uri = make_sqlite_storage_uri(optuna_sqlite)
 
+    feature_out_dir = dbmod.default_project_root() / "output" / "clustering" / "feature_matrices"
+    if cfg.get("export_feature_matrices", True):
+        feature_out_dir.mkdir(parents=True, exist_ok=True)
+
     con = dbmod.connect(db_path)
     ensure_schema(con)
 
@@ -167,7 +182,36 @@ def main() -> None:
 
     for cluster_type, features_df in cluster_jobs:
         logger.info("=== Cluster type: %s ===", cluster_type)
-        pm = prepare_feature_matrix(features_df, geo_col="geo_code", scaler=str(cfg["scaler"]))
+        pm = prepare_feature_matrix(
+            features_df,
+            geo_col="geo_code",
+            scaler=str(cfg["scaler"]),
+            add_missingness_flags=bool(cfg["add_missingness_flags"]),
+            drop_missing_rate_gt=float(cfg["drop_missing_rate_gt"]),
+            drop_zero_variance=bool(cfg["drop_zero_variance"]),
+        )
+
+        # Export the exact feature matrices used for clustering (post filtering + imputation).
+        if cfg.get("export_feature_matrices", True):
+            X_df = pd.DataFrame(pm.X, columns=pm.feature_names)
+            X_df.insert(0, "geo_code", pm.geo_codes)
+            X_scaled_df = pd.DataFrame(pm.X_scaled, columns=pm.feature_names)
+            X_scaled_df.insert(0, "geo_code", pm.geo_codes)
+
+            (feature_out_dir / f"{cluster_type}__X.csv").write_text(
+                X_df.to_csv(index=False),
+                encoding="utf-8",
+            )
+            (feature_out_dir / f"{cluster_type}__X_scaled_{cfg['scaler']}.csv").write_text(
+                X_scaled_df.to_csv(index=False),
+                encoding="utf-8",
+            )
+            logger.info(
+                "Wrote feature matrices: %s (%d cities, %d features)",
+                feature_out_dir,
+                X_df.shape[0],
+                X_df.shape[1] - 1,
+            )
 
         # Optional 2D embedding for plotting (PCA on scaled features)
         emb_df = None

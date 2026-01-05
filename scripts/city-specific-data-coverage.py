@@ -108,7 +108,7 @@ def analyze_city(con, city_name):
             return
 
         if len(city_info) > 1:
-            print(f"  ⚠️ Mehrere Treffer gefunden:")
+            print("  ⚠️ Mehrere Treffer gefunden:")
             for _, row in city_info. iterrows():
                 print(f"    • {row['geo_name']} ({row['geo_code']})")
             print(f"  Verwende ersten Treffer: {city_info.iloc[0]['geo_name']}")
@@ -129,7 +129,7 @@ def analyze_city(con, city_name):
             WHERE geo_code = '{geo_code}'
         """).fetchone()
 
-        print(f"\n  📈 Statistiken:")
+        print("\n  📈 Statistiken:")
         print(f"    • Datenpunkte gesamt: {stats[0]: ,}")
         print(f"    • Anzahl Indikatoren: {stats[1]}")
         print(f"    • Anzahl Jahre: {stats[2]}")
@@ -145,7 +145,7 @@ def analyze_city(con, city_name):
             print(f"    • Zeitraum: {time_range[0]} - {time_range[1]}")
 
         # Indikatoren-Details
-        print(f"\n  📋 Verfügbare Indikatoren:")
+        print("\n  📋 Verfügbare Indikatoren:")
         indicators = con.execute(f"""
             SELECT 
                 f.indicator_code,
@@ -176,7 +176,7 @@ def analyze_city(con, city_name):
             print("    Keine Indikatoren gefunden")
 
         # Fehlende Indikatoren - mit Prüfung ob für Städte verfügbar
-        print(f"\n  ❌ Fehlende Indikatoren:")
+        print("\n  ❌ Fehlende Indikatoren:")
         missing = con.execute(f"""
             SELECT indicator_code, indicator_name, dataset_name
             FROM dim_indicator
@@ -211,7 +211,7 @@ def analyze_city(con, city_name):
 
             # Zeige fehlende Indikatoren die für Städte verfügbar sind
             if missing_for_cities:
-                print(f"\n    🏙️ Fehlt für diese Stadt (aber für andere Städte verfügbar):")
+                print("\n    🏙️ Fehlt für diese Stadt (aber für andere Städte verfügbar):")
                 current_dataset = None
                 for ind in missing_for_cities:
                     dataset = ind['dataset_name'] if ind['dataset_name'] else 'Unbekannt'
@@ -225,7 +225,7 @@ def analyze_city(con, city_name):
 
             # Zeige Indikatoren die nur für Länder verfügbar sind
             if only_countries:
-                print(f"\n    🌍 Nur auf Länderebene verfügbar (nicht für Städte):")
+                print("\n    🌍 Nur auf Länderebene verfügbar (nicht für Städte):")
                 current_dataset = None
                 for ind in only_countries:
                     dataset = ind['dataset_name'] if ind['dataset_name'] else 'Unbekannt'
@@ -239,7 +239,7 @@ def analyze_city(con, city_name):
                         print(f"          (verfügbar für {ind['country_count']} Länder)")
 
             # Zusammenfassung
-            print(f"\n    📊 Zusammenfassung fehlende Indikatoren:")
+            print("\n    📊 Zusammenfassung fehlende Indikatoren:")
             print(f"       • Für andere Städte verfügbar: {len(missing_for_cities)}")
             print(f"       • Nur auf Länderebene:  {len(only_countries)}")
         else:
@@ -254,7 +254,7 @@ def analyze_city(con, city_name):
 def compare_cities(con, city_names):
     """Vergleicht die Datenabdeckung mehrerer Städte."""
     print(f"\n{'=' * 60}")
-    print(f"📊 VERGLEICH DER DATENABDECKUNG")
+    print("📊 VERGLEICH DER DATENABDECKUNG")
     print("=" * 60)
 
     comparison_data = []
@@ -307,7 +307,7 @@ def compare_cities(con, city_names):
 
         # Gemeinsame Indikatoren finden
         if len(geo_codes) > 1:
-            print(f"\n  🔗 Gemeinsame Indikatoren:")
+            print("\n  🔗 Gemeinsame Indikatoren:")
 
             geo_codes_str = "', '".join(geo_codes)
             common_indicators = con.execute(f"""

@@ -121,7 +121,8 @@ def tune_clustering(
             k_max = max(2, min(12, n - 1))
             n_components = trial.suggest_int("n_components", 2, k_max)
             covariance_type = trial.suggest_categorical("covariance_type", ["full", "diag", "tied", "spherical"])
-            reg_covar = trial.suggest_float("reg_covar", 1e-6, 1e-3, log=True)
+            # Wider regularization range for numerical stability on small-N/high-dim data.
+            reg_covar = trial.suggest_float("reg_covar", 1e-6, 1e-2, log=True)
             params = {
                 "n_components": n_components,
                 "covariance_type": covariance_type,
@@ -131,8 +132,14 @@ def tune_clustering(
         else:
             raise ValueError(f"Unknown algorithm: {algorithm}")
 
-        # Fit on full data
-        labels, _, model = _fit_predict_factory(algorithm, params, seed=seed)
+        # Fit on full data (GMM can fail for some hyperparams / degenerate covariance)
+        try:
+            labels, _, _model = _fit_predict_factory(algorithm, params, seed=seed)
+        except Exception as e:
+            # Treat as a bad trial, but do not fail the optimization run.
+            trial.set_user_attr("fit_failed", True)
+            trial.set_user_attr("fit_error", repr(e))
+            return -1e9
 
         def fit_predict_boot(X_train: np.ndarray, X_predict: np.ndarray) -> np.ndarray:
             # Fit a fresh model on X_train; then predict labels for X_predict.
@@ -195,6 +202,15 @@ def tune_clustering(
     start = time.time()
     study.optimize(objective, n_trials=int(n_trials))
     _ = time.time() - start
+
+    # If all trials were invalid and got the same sentinel score, Optuna may still pick one.
+    # Ensure we have at least one completed trial with a non-sentinel value.
+    completed = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+    if not completed:
+        raise RuntimeError(
+            f"Optuna produced no completed trials for algorithm={algorithm}. "
+            f"Consider disabling it or widening reg_covar / reducing k."
+        )
 
     best = study.best_trial
     best_params = dict(best.params)

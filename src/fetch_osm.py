@@ -1,6 +1,4 @@
 import requests
-import duckdb
-import time
 
 def fetch_osm_amenities(city_name):
     """
@@ -47,7 +45,7 @@ def fetch_osm_amenities(city_name):
             
         return 0
         
-    except Exception as e:
+    except Exception:
         # print(f"Error OSM for {city_name}: {e}")
         return None
 

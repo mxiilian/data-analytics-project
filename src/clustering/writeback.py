@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, Optional
 
 import duckdb
@@ -81,22 +80,24 @@ def ensure_schema(con: duckdb.DuckDBPyConnection) -> None:
     )
     con.execute(
         """
-        CREATE VIEW IF NOT EXISTS v_cluster_labels_latest AS
-        SELECT *
-        FROM cluster_labels
-        QUALIFY run_id = (
-            SELECT run_id
-            FROM cluster_runs r
-            WHERE r.cluster_type = cluster_labels.cluster_type
-            ORDER BY r.created_at_utc DESC
-            LIMIT 1
-        );
+        CREATE OR REPLACE VIEW v_cluster_labels_latest AS
+        SELECT l.*
+        FROM cluster_labels l
+        JOIN (
+            SELECT
+                cluster_type,
+                arg_max(run_id, created_at_utc) AS run_id
+            FROM cluster_runs
+            GROUP BY cluster_type
+        ) latest
+        ON latest.run_id = l.run_id
+        AND latest.cluster_type = l.cluster_type;
         """
     )
 
     con.execute(
         """
-        CREATE VIEW IF NOT EXISTS v_cluster_labels_latest_by_algo AS
+        CREATE OR REPLACE VIEW v_cluster_labels_latest_by_algo AS
         SELECT l.*
         FROM cluster_labels l
         JOIN (
@@ -115,17 +116,20 @@ def ensure_schema(con: duckdb.DuckDBPyConnection) -> None:
 
     con.execute(
         """
-        CREATE VIEW IF NOT EXISTS v_cluster_runs_latest AS
-        SELECT *
-        FROM cluster_runs
-        QUALIFY run_id = (
-            SELECT run_id
-            FROM cluster_runs r2
-            WHERE r2.cluster_type = cluster_runs.cluster_type
-              AND r2.algorithm = cluster_runs.algorithm
-            ORDER BY r2.created_at_utc DESC
-            LIMIT 1
-        );
+        CREATE OR REPLACE VIEW v_cluster_runs_latest AS
+        SELECT r.*
+        FROM cluster_runs r
+        JOIN (
+            SELECT
+                cluster_type,
+                algorithm,
+                arg_max(run_id, created_at_utc) AS run_id
+            FROM cluster_runs
+            GROUP BY cluster_type, algorithm
+        ) latest
+        ON latest.run_id = r.run_id
+        AND latest.cluster_type = r.cluster_type
+        AND latest.algorithm = r.algorithm;
         """
     )
 

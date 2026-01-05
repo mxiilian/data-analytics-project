@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Callable
 
 import numpy as np
 from sklearn.metrics import (
@@ -75,14 +75,21 @@ def compute_cluster_metrics(
         for _ in range(int(n_bootstrap)):
             idx = rng.integers(0, n, size=n, endpoint=False)
             Xb = X[idx]
-            boot_labels_full = fit_predict_full(Xb, X)
+            try:
+                boot_labels_full = fit_predict_full(Xb, X)
+            except Exception:
+                # Some models (e.g. GMM) can fail to fit on degenerate bootstraps.
+                continue
 
             if boot_labels_full is None:
                 continue
             boot_labels_full = np.asarray(boot_labels_full)
             if boot_labels_full.shape[0] != n:
                 continue
-            stability_scores.append(float(adjusted_rand_score(baseline, boot_labels_full)))
+            try:
+                stability_scores.append(float(adjusted_rand_score(baseline, boot_labels_full)))
+            except Exception:
+                continue
 
     stability_ari = float(np.nanmean(stability_scores)) if stability_scores else float("nan")
 

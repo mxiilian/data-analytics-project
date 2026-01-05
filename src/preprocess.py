@@ -426,6 +426,22 @@ def add_city_name_column(df: pd.DataFrame, dataset_type: DatasetType) -> pd.Data
     """
     Add a standardized city_name column based on location codes.
     """
+    return add_city_name_column_with_options(df, dataset_type, use_target_mapping=True)
+
+
+def add_city_name_column_with_options(
+    df: pd.DataFrame,
+    dataset_type: DatasetType,
+    *,
+    use_target_mapping: bool = True,
+) -> pd.DataFrame:
+    """
+    Add a standardized city_name column based on location codes.
+
+    When use_target_mapping is False, city_name is derived generically:
+    - Eurostat city datasets: city_name == location_code
+    - WHO datasets: city_name is the base part of "City/ISO3"
+    """
     if "location_code" not in df.columns:
         return df
     
@@ -433,7 +449,14 @@ def add_city_name_column(df: pd.DataFrame, dataset_type: DatasetType) -> pd.Data
         if pd.isna(code):
             return None
         code = str(code).strip()
-        
+
+        if not use_target_mapping:
+            if dataset_type == DatasetType.WHO_AIR_QUALITY:
+                # WHO format: "CityName/ISO3"
+                return code.split("/")[0]
+            # Eurostat format: city codes like DE002C
+            return code
+
         if dataset_type == DatasetType.WHO_AIR_QUALITY:
             # WHO format: "CityName/ISO3"
             for city in TARGET_CITIES:
@@ -456,11 +479,51 @@ def add_country_columns(df: pd.DataFrame, dataset_type: DatasetType) -> pd.DataF
     """
     Add country_code and country_name columns based on location.
     """
+    return add_country_columns_with_options(df, dataset_type, use_target_mapping=True)
+
+
+def add_country_columns_with_options(
+    df: pd.DataFrame,
+    dataset_type: DatasetType,
+    *,
+    use_target_mapping: bool = True,
+) -> pd.DataFrame:
+    """
+    Add country_code and country_name columns based on location.
+
+    When use_target_mapping is False, country fields are derived generically:
+    - Eurostat country datasets: country_code == location_code (ISO2), country_name left as None
+    - Eurostat city datasets: country_code inferred as first 2 chars of location_code, country_name left as None
+    - WHO datasets: country_code uses iso3 when available, and country_name is preserved if present
+    """
     if "location_code" not in df.columns:
         return df
     
     df = df.copy()
     
+    if not use_target_mapping:
+        if dataset_type == DatasetType.EUROSTAT_COUNTRY:
+            df["country_code"] = df["location_code"].astype(str).str.strip()
+            if "country_name" not in df.columns:
+                df["country_name"] = None
+            return df
+
+        if dataset_type == DatasetType.EUROSTAT_CITY:
+            df["country_code"] = df["location_code"].astype(str).str.strip().str[:2]
+            if "country_name" not in df.columns:
+                df["country_name"] = None
+            return df
+
+        if dataset_type == DatasetType.WHO_AIR_QUALITY:
+            # Preserve existing WHO columns if present
+            if "iso3" in df.columns:
+                df["country_code"] = df["iso3"].astype(str).str.strip()
+            elif "country_code" not in df.columns:
+                df["country_code"] = None
+            if "country_name" not in df.columns:
+                df["country_name"] = None
+            return df
+
     if dataset_type == DatasetType.EUROSTAT_COUNTRY:
         # Location code IS the country code
         df["country_code"] = df["location_code"]
@@ -617,6 +680,8 @@ def aggregate_to_yearly(df: pd.DataFrame, group_cols: list[str]) -> pd.DataFrame
 def process_eurostat_dataset(
     df: pd.DataFrame,
     config: DatasetConfig,
+    *,
+    filter_to_targets: bool = True,
 ) -> pd.DataFrame:
     """
     Process a single Eurostat dataset through Phases 1-3.
@@ -631,12 +696,23 @@ def process_eurostat_dataset(
     
     # Phase 2: Geographic filtering
     if config.dataset_type == DatasetType.EUROSTAT_CITY:
-        df = filter_eurostat_cities(df)
-        df = add_city_name_column(df, config.dataset_type)
+        if filter_to_targets:
+            df = filter_eurostat_cities(df)
+            df = add_city_name_column_with_options(
+                df, config.dataset_type, use_target_mapping=True
+            )
+        else:
+            # Keep all city rows (incl. other cities and potential aggregates if present)
+            df = add_city_name_column_with_options(
+                df, config.dataset_type, use_target_mapping=False
+            )
     else:
-        df = filter_eurostat_countries(df)
+        if filter_to_targets:
+            df = filter_eurostat_countries(df)
     
-    df = add_country_columns(df, config.dataset_type)
+    df = add_country_columns_with_options(
+        df, config.dataset_type, use_target_mapping=filter_to_targets
+    )
     logger.info(f"  After geographic filtering: {df.shape}")
     
     # Phase 3: Temporal standardization
@@ -675,9 +751,14 @@ def process_who_dataset(df: pd.DataFrame, config: DatasetConfig) -> pd.DataFrame
     logger.info(f"  After column cleanup: {df.shape}")
     
     # Phase 2: Geographic filtering
+    # Default behavior keeps only target cities; can be disabled via caller.
     df = filter_who_cities(df)
-    df = add_city_name_column(df, DatasetType.WHO_AIR_QUALITY)
-    df = add_country_columns(df, DatasetType.WHO_AIR_QUALITY)
+    df = add_city_name_column_with_options(
+        df, DatasetType.WHO_AIR_QUALITY, use_target_mapping=True
+    )
+    df = add_country_columns_with_options(
+        df, DatasetType.WHO_AIR_QUALITY, use_target_mapping=True
+    )
     logger.info(f"  After geographic filtering: {df.shape}")
     
     # Phase 3: Temporal standardization
@@ -690,6 +771,8 @@ def process_who_dataset(df: pd.DataFrame, config: DatasetConfig) -> pd.DataFrame
 def load_and_process_dataset(
     raw_dir: Path,
     config: DatasetConfig,
+    *,
+    filter_to_targets: bool = True,
 ) -> Optional[pd.DataFrame]:
     """
     Load a raw CSV and process it through Phases 1-3.
@@ -704,9 +787,39 @@ def load_and_process_dataset(
     df = pd.read_csv(file_path, low_memory=False)
     
     if config.dataset_type == DatasetType.WHO_AIR_QUALITY:
-        return process_who_dataset(df, config)
+        if filter_to_targets:
+            return process_who_dataset(df, config)
+
+        # Inline variant to keep all WHO cities (avoid adding a separate public function)
+        logger.info("Processing WHO air quality dataset (all cities)")
+        logger.info(f"  Input shape: {df.shape}")
+        df = df.rename(columns={"city": "location_code", "year": "time_period"})
+        keep_cols = [
+            "location_code",
+            "time_period",
+            "iso3",
+            "country_name",
+            "pm10_concentration",
+            "pm25_concentration",
+            "no2_concentration",
+            "population",
+            "latitude",
+            "longitude",
+        ]
+        df = df[[c for c in keep_cols if c in df.columns]].copy()
+        logger.info(f"  After column cleanup: {df.shape}")
+        df = add_city_name_column_with_options(
+            df, DatasetType.WHO_AIR_QUALITY, use_target_mapping=False
+        )
+        df = add_country_columns_with_options(
+            df, DatasetType.WHO_AIR_QUALITY, use_target_mapping=False
+        )
+        logger.info(f"  After geographic filtering: {df.shape}")
+        df = standardize_time_period(df)
+        logger.info(f"  After temporal standardization: {df.shape}")
+        return df
     else:
-        return process_eurostat_dataset(df, config)
+        return process_eurostat_dataset(df, config, filter_to_targets=filter_to_targets)
 
 
 def generate_coverage_report(
@@ -749,6 +862,8 @@ def run_preprocessing_pipeline(
     raw_dir: Path,
     output_dir: Path,
     datasets_to_process: Optional[list[str]] = None,
+    *,
+    filter_to_targets: bool = True,
 ) -> dict[str, pd.DataFrame]:
     """
     Run the full preprocessing pipeline (Phases 1-3) on all datasets.
@@ -775,13 +890,16 @@ def run_preprocessing_pipeline(
     
     logger.info(f"Processing {len(configs_to_process)} datasets")
     logger.info(f"Target year range: {YEAR_MIN}-{YEAR_MAX}")
-    logger.info(f"Target cities: {[c.name for c in TARGET_CITIES]}")
+    if filter_to_targets:
+        logger.info(f"Target cities: {[c.name for c in TARGET_CITIES]}")
+    else:
+        logger.info("Target cities: ALL (no geographic filtering)")
     
     processed_datasets: dict[str, pd.DataFrame] = {}
     
     for name, config in configs_to_process.items():
         try:
-            df = load_and_process_dataset(raw_dir, config)
+            df = load_and_process_dataset(raw_dir, config, filter_to_targets=filter_to_targets)
             if df is not None and not df.empty:
                 processed_datasets[name] = df
                 
@@ -851,6 +969,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Enable debug logging",
     )
+    parser.add_argument(
+        "--all-cities",
+        "--all-locations",
+        action="store_true",
+        help="Process ALL cities/countries (disable TARGET_* geographic filtering).",
+    )
     
     args = parser.parse_args()
     
@@ -861,4 +985,5 @@ if __name__ == "__main__":
         raw_dir=args.raw_dir,
         output_dir=args.output_dir,
         datasets_to_process=args.datasets,
+        filter_to_targets=not args.all_cities,
     )

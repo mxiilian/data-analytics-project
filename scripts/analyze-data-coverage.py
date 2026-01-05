@@ -4,7 +4,6 @@ in der DuckDB-Datenbank.
 """
 
 import duckdb
-import pandas as pd
 from pathlib import Path
 
 # Pfad zur Datenbank
@@ -162,7 +161,7 @@ def main():
                 HAVING COUNT(DISTINCT f.indicator_id) >= {max_indicators * 0.7}
             """).df()
 
-            print(f"\n  Empfohlene Städte für Clustering (min.  70% Abdeckung):")
+            print("\n  Empfohlene Städte für Clustering (min.  70% Abdeckung):")
             print(f"  Anzahl:  {len(recommended)} Städte")
 
     except Exception as e:

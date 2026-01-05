@@ -268,7 +268,7 @@ def process_who_air_quality(con):
                     except (ValueError, TypeError):
                         continue
 
-        except Exception as e:
+        except Exception:
             continue
 
     print(f"  -> Loaded {rows_loaded} WHO air quality measurements.")

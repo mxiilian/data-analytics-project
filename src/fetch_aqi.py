@@ -1,5 +1,4 @@
 import requests
-import duckdb
 import time
 
 # You can get a free token from https://aqicn.org/data-platform/token/
