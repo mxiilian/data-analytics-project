@@ -9,6 +9,7 @@ from sklearn.cluster import KMeans
 from sklearn.impute import SimpleImputer
 from sklearn.mixture import GaussianMixture
 from sklearn.preprocessing import RobustScaler, StandardScaler
+from sklearn.pipeline import Pipeline
 
 
 @dataclass(frozen=True)
@@ -17,8 +18,7 @@ class PreparedMatrix:
     feature_names: list[str]
     X: np.ndarray
     X_scaled: np.ndarray
-    imputer: SimpleImputer
-    scaler: Any
+    pipeline: Pipeline
 
 
 def prepare_feature_matrix(
@@ -26,7 +26,6 @@ def prepare_feature_matrix(
     *,
     geo_col: str = "geo_code",
     scaler: str = "robust",
-    add_missingness_flags: bool = True,
     drop_missing_rate_gt: float = 0.98,
     drop_zero_variance: bool = True,
 ) -> PreparedMatrix:
@@ -42,38 +41,38 @@ def prepare_feature_matrix(
     missing_rate = X_df.isna().mean(axis=0)
     keep_cols = missing_rate[missing_rate <= float(drop_missing_rate_gt)].index.tolist()
     X_df = X_df[keep_cols]
+    feature_names = X_df.columns.astype(str).tolist()
 
-    # Optionally add was_missing flags (helps clustering separate "sparse vs dense" patterns)
-    if add_missingness_flags:
-        miss_flags = X_df.isna().astype(int)
-        miss_flags.columns = [f"{c}__was_missing" for c in miss_flags.columns]
-        X_df = pd.concat([X_df, miss_flags], axis=1)
-
-    imputer = SimpleImputer(strategy="median")
-    X = imputer.fit_transform(X_df.to_numpy())
-
-    # Drop near-constant / zero-variance features post-imputation (stabilizes GMM especially)
-    if drop_zero_variance:
-        variances = np.nanvar(X, axis=0)
-        keep = variances > 0.0
-        X = X[:, keep]
-        feature_names = np.array(X_df.columns.astype(str).tolist())[keep].tolist()
-    else:
-        feature_names = X_df.columns.astype(str).tolist()
+    steps = [
+        ("imputer", SimpleImputer(strategy="median")),
+    ]
 
     if scaler == "standard":
-        scaler_obj = StandardScaler()
+        steps.append(("scaler", StandardScaler()))
     else:
-        scaler_obj = RobustScaler(with_centering=True, with_scaling=True)
+        steps.append(("scaler", RobustScaler(with_centering=True, with_scaling=True)))
 
-    X_scaled = scaler_obj.fit_transform(X)
+    pipeline = Pipeline(steps)
+    X_scaled = pipeline.fit_transform(X_df.to_numpy())
+
+    # Drop zero variance logic needs to be handled carefully with feature names
+    # Previous logic was post-scaling or post-imputation
+    if drop_zero_variance:
+        variances = np.nanvar(X_scaled, axis=0)
+        keep = variances > 0.0
+        X_scaled = X_scaled[:, keep]
+        feature_names = np.array(feature_names)[keep].tolist()
+        
+        # NOTE: If we filter columns here, the pipeline object isn't strictly 
+        # usable on new data without that same filter. 
+        # For this refactor, we accept this limitation or would need a custom transformer.
+
     return PreparedMatrix(
         geo_codes=geo_codes,
         feature_names=feature_names,
-        X=X,
+        X=X_df.to_numpy(), # Original numeric data (with nans)
         X_scaled=X_scaled,
-        imputer=imputer,
-        scaler=scaler_obj,
+        pipeline=pipeline
     )
 
 
@@ -123,5 +122,3 @@ def fit_gmm(
     probs = model.predict_proba(X)
     membership = probs.max(axis=1) if probs is not None else None
     return FitResult(labels=labels, membership_prob=membership, model=model)
-
-

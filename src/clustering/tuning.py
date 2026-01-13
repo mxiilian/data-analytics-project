@@ -90,6 +90,8 @@ def tune_clustering(
     min_cluster_size: int = 2,
     max_cluster_frac: float = 0.85,
     use_pruner: bool = True,
+    n_clusters_min: int = 2,
+    n_clusters_max: int = 12,
 ) -> tuple[TuningResult, ClusterMetrics]:
     """
     Runs Optuna tuning and returns best params + best metrics (computed on full data).
@@ -111,15 +113,24 @@ def tune_clustering(
     def objective(trial: optuna.Trial) -> float:
         # Suggest params
         if algo == "kmeans":
-            k_max = max(2, min(12, n - 1))
-            k = trial.suggest_int("k", 2, k_max)
+            # Clip upper bound to data size
+            k_upper = max(2, min(n_clusters_max, n - 1))
+            k_lower = max(2, n_clusters_min)
+            if k_lower > k_upper:
+                k_upper = k_lower
+
+            k = trial.suggest_int("k", k_lower, k_upper)
             n_init = trial.suggest_int("n_init", 10, 50)
             init = trial.suggest_categorical("init", ["k-means++", "random"])
             max_iter = trial.suggest_int("max_iter", 100, 600)
             params = {"k": k, "n_init": n_init, "init": init, "max_iter": max_iter, "_X_full": X_full}
         elif algo == "gmm":
-            k_max = max(2, min(12, n - 1))
-            n_components = trial.suggest_int("n_components", 2, k_max)
+            k_upper = max(2, min(n_clusters_max, n - 1))
+            k_lower = max(2, n_clusters_min)
+            if k_lower > k_upper:
+                k_upper = k_lower
+            
+            n_components = trial.suggest_int("n_components", k_lower, k_upper)
             covariance_type = trial.suggest_categorical("covariance_type", ["full", "diag", "tied", "spherical"])
             # Wider regularization range for numerical stability on small-N/high-dim data.
             reg_covar = trial.suggest_float("reg_covar", 1e-6, 1e-2, log=True)

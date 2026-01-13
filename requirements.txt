@@ -11,3 +11,6 @@ optuna==4.6.0
 optuna-dashboard==0.20.0
 scikit-learn==1.7.2
 scipy==1.16.3
+matplotlib==3.10.0
+streamlit==1.41.1
+plotly==5.24.1
